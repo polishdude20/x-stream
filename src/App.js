@@ -1,24 +1,26 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import React, { useRef, useState, useEffect } from "react";
+import logo from "./logo.svg";
+import "./App.css";
+import { loadAllGeometry } from "./modules/Model.js";
+
+const ThreeModelContainer = props => {
+  const threeModelCanvasRef = useRef(null);
+
+  useEffect(() => {
+    loadAllGeometry(threeModelCanvasRef.current);
+  }, [threeModelCanvasRef]);
+
+  return (
+    <div className="threeModelContainer">
+      <canvas className="threeModelCanvas" ref={threeModelCanvasRef}></canvas>
+    </div>
+  );
+};
 
 function App() {
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+      <ThreeModelContainer></ThreeModelContainer>
     </div>
   );
 }
