@@ -1,8 +1,10 @@
+
+
 .threeModelContainer {
   width: 100%;
   height: 600px;
   margin: 0;
-  padding: 20px;
+  padding: 0;
 }
 .threeModelCanvas {
   height: 100%;

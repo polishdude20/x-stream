@@ -1,5 +1,7 @@
 import * as THREE from "three";
+import { TransformControls } from "./TransformControls";
 import { OrbitControls } from "./OrbitControls";
+import { DragControls } from "./DragControls";
 import FourBar from "./vectorFourBar";
 import { scaleValues } from "./Utils";
 import { STLLoader } from "./STLLoader";
@@ -8,6 +10,8 @@ import bottomArmFile from "../stl/BottomArm.stl";
 import knuckleFile from "../stl/knuckle.stl";
 import frameFile from "../stl/Frame.stl";
 import wheelFile from "../stl/wheel.stl";
+import rearLinkFile from "../stl/SwingLink.stl";
+import trailingArmFile from "../stl/TrailingArm.stl";
 
 const link1Length = 223.9;
 const link2Length = 419.1;
@@ -23,9 +27,12 @@ const armTopKnuckleGroupLeft = new THREE.Group();
 const armTopKnuckleGroupRight = new THREE.Group();
 const knuckleWheelGroupLeft = new THREE.Group();
 const knuckleWheelGroupRight = new THREE.Group();
+const rearSuspGroupRight = new THREE.Group();
+const trailingGroupRight = new THREE.Group();
 
 const parts = {};
 let controls = null;
+let transControls = null;
 let renderer = null;
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
@@ -46,7 +53,11 @@ const partNames = [
   "knuckleRight",
   "wheelRight",
   "wheelLeft",
-  "frame"
+  "wheelRearRight",
+  "frame",
+  "bottomRearRightLink",
+  "topRearRightLink",
+  "trailingArmRight"
 ];
 
 partNames.forEach(name => {
@@ -83,9 +94,13 @@ const scaleGeometries = () => {
   parts.botArmLeft.scale.set(scale, scale, scale);
   parts.wheelRight.scale.set(5.5, 5.5, 3.6);
   parts.wheelLeft.scale.set(5.5, 5.5, 3.6);
+  parts.wheelRearRight.scale.set(5.5, 5.5, 3.6);
   parts.knuckleLeft.scale.set(scale, scale, scale);
   parts.knuckleRight.scale.set(scale, scale, scale);
   parts.frame.scale.set(scale, scale, scale);
+  parts.bottomRearRightLink.scale.set(scale, scale, scale);
+  parts.topRearRightLink.scale.set(scale, scale, scale);
+  parts.trailingArmRight.scale.set(scale, scale, scale);
 };
 
 const renderSetup = canvasRef => {
@@ -95,7 +110,12 @@ const renderSetup = canvasRef => {
   });
 
   controls = new OrbitControls(camera, renderer.domElement);
+  controls.update();
+  controls.addEventListener("change", renderOnce);
+
+
   scene.background = new THREE.Color(0xe5e5e5);
+
   const light = new THREE.DirectionalLight(0xffffff);
   light.position.set(0, 1, 1).normalize();
   scene.add(light);
@@ -131,6 +151,43 @@ const renderSetup = canvasRef => {
   parts.frame.rotation.y = Math.PI / 2;
   parts.frame.rotateX(+0.2);
 
+  const dragControls = new DragControls(
+    [parts.wheelRearRight],
+    camera,
+    renderer.domElement
+  );
+
+  dragControls.addEventListener("dragstart", function (event) {
+    controls.enabled = false;
+  });
+
+  dragControls.addEventListener("drag", function (event) {
+    console.log(event.object.position);
+    renderOnce();
+  });
+
+  dragControls.addEventListener("dragend", function (event) {
+    controls.enabled = true;
+  });
+
+
+  parts.bottomRearRightLink.position.set(-1669.476, 183.76761, -88.413472);
+  parts.topRearRightLink.position.set(-1637.77, 352.443809, -84.032);
+
+
+  parts.trailingArmRight.position.set(-586.16749, -40.7382, 80.05754);
+  parts.trailingArmRight.rotateY(Math.PI / 2 + 0.27)
+  parts.trailingArmRight.rotateX(Math.PI / 14)
+
+  parts.wheelRearRight.position.set(-1548.52242, 244.26671, 386.4830)
+
+  trailingGroupRight.add(parts.trailingArmRight);
+  trailingGroupRight.add(parts.wheelRearRight);
+
+  //rearSuspGroupRight.add(parts.trailingArmRight);
+  rearSuspGroupRight.add(parts.bottomRearRightLink);
+  rearSuspGroupRight.add(parts.topRearRightLink);
+
   armTopKnuckleGroupLeft.add(parts.topArmLeft);
   armTopKnuckleGroupRight.add(parts.topArmRight);
 
@@ -146,9 +203,11 @@ const renderSetup = canvasRef => {
   suspensionGroupLeft.position.set(0, 0, -370);
   suspensionGroupLeft.rotateY(Math.PI);
 
+  masterGroup.add(trailingGroupRight);
   masterGroup.add(parts.frame);
   masterGroup.add(suspensionGroupRight);
   masterGroup.add(suspensionGroupLeft);
+  masterGroup.add(rearSuspGroupRight);
 
   scene.add(masterGroup);
   masterGroup.position.set(800, 0, 0);
@@ -161,12 +220,44 @@ const renderSetup = canvasRef => {
   resizeCanvasToDisplaySize();
   window.addEventListener("resize", () => resizeCanvasToDisplaySize());
 
-  controls.update();
-  controls.addEventListener("change", renderOnce);
   renderer.render(scene, camera);
-  //document.querySelector(".modelLoadingWrapper").style.visibility = "hidden";
-  //document.getElementById("modelCanvas").style.visibility = "visible";
+
+
+
+  const spin = () => {
+    parts.wheelRearRight.rotateZ(-0.1);
+    parts.wheelRight.rotateZ(0.1);
+    parts.wheelLeft.rotateZ(-0.1);
+    controls.update();
+    renderer.render(scene, camera);
+    window.requestAnimationFrame(spin);
+  }
+  window.requestAnimationFrame(spin);
+
+
 };
+
+export const rotateTrailingArmX = angle => {
+
+  trailingGroupRight.rotateX(angle)
+  console.log(parts.trailingArmRight.rotation)
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+export const rotateTrailingArmY = angle => {
+  trailingGroupRight.rotateY(angle)
+  console.log(parts.trailingArmRight.rotation)
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+export const rotateTrailingArmZ = angle => {
+  trailingGroupRight.rotateZ(angle)
+  console.log(parts.trailingArmRight.rotation)
+  controls.update();
+  renderer.render(scene, camera);
+}
 
 export const loadAllGeometry = canvasRef => {
   const loader = new STLLoader();
@@ -221,29 +312,59 @@ export const loadAllGeometry = canvasRef => {
         err => console.log("error-" + err)
       );
     });
+  const loadRearLink = () =>
+    new Promise(resolve => {
+      console.log("Loading RearLink");
+      loader.load(
+        rearLinkFile,
+        resolve,
+        () => console.log("progress"),
+        err => console.log("error-" + err)
+      );
+    });
+  const loadTrailingArm = () =>
+    new Promise(resolve => {
+      console.log("Loading Trailing Arm");
+      loader.load(
+        trailingArmFile,
+        resolve,
+        () => console.log("progress"),
+        err => console.log("error-" + err)
+      );
+    });
   const promises = [
     loadTopArm(),
     loadBottomArm(),
     loadWheel(),
     loadFrontKnuckle(),
-    loadFrame()
+    loadFrame(),
+    loadRearLink(),
+    loadTrailingArm()
   ];
   console.log("Waiting For Promises");
 
-  Promise.all(promises).then(([topArm, botArm, wheel, frontKnuckle, frame]) => {
-    parts.topArmLeft.geometry = topArm;
-    parts.topArmRight.geometry = topArm;
-    parts.botArmLeft.geometry = botArm;
-    parts.botArmRight.geometry = botArm;
-    parts.wheelLeft.geometry = wheel;
-    parts.wheelRight.geometry = wheel;
-    parts.knuckleLeft.geometry = frontKnuckle;
-    parts.knuckleRight.geometry = frontKnuckle;
-    parts.frame.geometry = frame;
-    console.log("All STL Loaded! Promises Resolved");
-    renderSetup(canvasRef);
-  });
+  Promise.all(promises).then(
+    ([topArm, botArm, wheel, frontKnuckle, frame, rearLink, trailingArm]) => {
+      parts.topArmLeft.geometry = topArm;
+      parts.topArmRight.geometry = topArm;
+      parts.botArmLeft.geometry = botArm;
+      parts.botArmRight.geometry = botArm;
+      parts.wheelLeft.geometry = wheel;
+      parts.wheelRight.geometry = wheel;
+      parts.wheelRearRight.geometry = wheel;
+      parts.knuckleLeft.geometry = frontKnuckle;
+      parts.knuckleRight.geometry = frontKnuckle;
+      parts.frame.geometry = frame;
+      parts.bottomRearRightLink.geometry = rearLink;
+      parts.topRearRightLink.geometry = rearLink;
+      parts.trailingArmRight.geometry = trailingArm;
+      console.log("All STL Loaded! Promises Resolved");
+      renderSetup(canvasRef);
+    }
+  );
 };
+
+
 
 export const animate = (left, right) => {
   armTopKnuckleGroupLeft.rotation.x = scaleValues(
